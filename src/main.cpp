@@ -4,7 +4,7 @@
  * MCU Board: Arduino Pro Micro (BTE13-010B, www.betemcu.cn) 16MHz atmega328 5V
  * Github: https://github.com/taunoe/lillering
  * 
- * Last edited: 04.06.2022
+ * Last edited: 06.06.2022
  * 
  * Copyright 2022 Tauno Erik
  ************************************************/
@@ -46,6 +46,10 @@ uint8_t data[NUM_7SEGS] = {
   0b01010101,
   0b01010101
 };
+
+uint32_t current_time = 0;
+uint32_t prev_time_1 = 0;
+uint32_t prev_time_2 = 0;
 
 /* Shift Register Functions */
 void all_off(){
@@ -149,34 +153,65 @@ const uint8_t COLS[8] = {
 void one_by_one_in_two_directions(uint32_t delay_time) {
   all_off();
 
-  for (uint8_t r = 0; r < NUM_7SEGS; r++) {
+  for (uint8_t row = 0; row < NUM_7SEGS; row++) {
 
     for (size_t c = 0; c < 8; c++) {
-      if ((c-1) > 7) {
-        // a
-        data[r] &= ~(COLS[7]);      // set back to Low
-        // b
-        data[4] &= ~(COLS[0]);      // set back to LOW
+      // If first column in row
+      if (c == 0) {
+        // Set last in previous row to Low
+        if (row == 0) {
+          data[NUM_7SEGS] &= ~(COLS[7]);      // set back to Low
+          data[0] &= ~(COLS[0]);
+        } else {
+          data[row-1] &= ~(COLS[7]);      // set back to Low
+          data[4-row+1] &= ~(COLS[0]);      // set back to LOW
+        }
       } else {
-        // a
-        data[r] &= ~(COLS[c-1]);    // set back to Low
-        // b
-        data[4] &= ~(COLS[7-c+1]);  // set back to LOW
+        // Set previous in current row Low
+        data[row] &= ~(COLS[c-1]);    // set back to Low
+        data[4-row] &= ~(COLS[7-c+1]);  // set back to LOW
       }
 
-      // a
-      data[r] |= COLS[c];           // set to High
-      // b
-      data[4] |= COLS[7-c];         // set to High
+      data[row] |= COLS[c];           // set to High
+      data[4-row] |= COLS[7-c];         // set to High
 
       shift_out_all_data(data);     // Display
       delay(delay_time);            // Wait
     }
-  
   }
-
 }
 
+
+void two_directions(uint32_t delay_1, uint32_t delay_2) {
+  all_off();
+
+  for (uint8_t row = 0; row < NUM_7SEGS; row++) {
+
+    for (size_t c = 0; c < 8; c++) {
+      // If first column in row
+      if (c == 0) {
+        // Set last in previous row to Low
+        if (row == 0) {
+          data[NUM_7SEGS] &= ~(COLS[7]);      // set back to Low
+          data[0] &= ~(COLS[0]);
+        } else {
+          data[row-1] &= ~(COLS[7]);      // set back to Low
+          data[4-row+1] &= ~(COLS[0]);      // set back to LOW
+        }
+      } else {
+        // Set previous in current row Low
+        data[row] &= ~(COLS[c-1]);    // set back to Low
+        data[4-row] &= ~(COLS[7-c+1]);  // set back to LOW
+      }
+
+      data[row] |= COLS[c];           // set to High
+      data[4-row] |= COLS[7-c];         // set to High
+
+      shift_out_all_data(data);     // Display
+      delay(delay_time);            // Wait
+    }
+  }
+}
 
 /* NeoPixel Functions */
 
@@ -203,15 +238,22 @@ void setup() {
 }
 
 void loop() {
+  current_time = millis();
+
   colorWipe(RGB.Color(255, 0, 0), 50); // Red
 
   // One by one: CounterClockWise
-  // one_by_one_CCW(500);
+  one_by_one_CCW(10);
+  one_by_one_CCW(10);
 
   // One by one: ClockWise
-  // one_by_one_CW(10);
+  one_by_one_CW(10);
+  one_by_one_CW(10);
 
   //
-  one_by_one_in_two_directions(2000);
+  one_by_one_in_two_directions(10);
+  one_by_one_in_two_directions(10);
+
+  two_directions(10, 20);
 
 }
